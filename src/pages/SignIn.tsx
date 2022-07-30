@@ -10,8 +10,9 @@ import {
   IonTitle,
   IonToolbar,
   useIonToast,
+  useIonViewWillEnter,
 } from "@ionic/react";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import "./SignIn.css";
 import axios, { AxiosError } from "axios";
 
@@ -35,6 +36,7 @@ export interface APIError {
 }
 
 const SignIn: React.FC = () => {
+  const [inProcess, setValue] = useState<boolean>();
   const [sessionTokenCode, setCode] = useState<string>();
   const [sessionTokenCodeVerifier, setVerifier] = useState<string>();
   const [present, dismiss] = useIonToast();
@@ -47,8 +49,13 @@ const SignIn: React.FC = () => {
     window.open(response.oauthURL, "_blank");
   }
 
+  useIonViewWillEnter(() => {
+    setValue(false);
+  });
+
   async function getCookie() {
     try {
+      setValue(true);
       const url = `${process.env.REACT_APP_SERVER_URL}/login`;
       const parameters = {
         session_token_code: sessionTokenCode,
@@ -67,6 +74,7 @@ const SignIn: React.FC = () => {
         duration: 3000,
       });
     }
+    setValue(false);
   }
 
   return (
@@ -99,7 +107,7 @@ const SignIn: React.FC = () => {
           </IonItem>
           <IonItem>
             <IonLabel slot="start">ログイン</IonLabel>
-            <IonButton slot="end" onClick={getCookie}>
+            <IonButton slot="end" onClick={getCookie} disabled={inProcess}>
               連携
             </IonButton>
           </IonItem>

@@ -21,15 +21,14 @@ import dayjs from "dayjs";
 import { useState } from "react";
 
 const User: React.FC = () => {
+  const [inProcess, setValue] = useState<boolean>();
   const [present, dismiss] = useIonToast();
-  // let account: SplatNet2 = (() => {})();
 
   const [account, setAccount] = useState(() => {
     return JSON.parse(localStorage.getItem("account") ?? "{}") as SplatNet2;
   });
 
   function getResult() {
-    console.log(account.iksm_session);
     const token = Buffer.from(account.iksm_session).toString("base64");
     const url = `https://splatool.net/analytics/?iksm=${token}`;
     window.open(url);
@@ -37,6 +36,7 @@ const User: React.FC = () => {
 
   async function getCookie() {
     try {
+      setValue(true);
       const url = `${process.env.REACT_APP_SERVER_URL}/cookie`;
       const parameters = {
         session_token: account.session_token,
@@ -55,9 +55,11 @@ const User: React.FC = () => {
         duration: 3000,
       });
     }
+    setValue(false);
   }
 
   useIonViewWillEnter(() => {
+    setValue(false);
     setAccount(
       JSON.parse(localStorage.getItem("account") ?? "{}") as SplatNet2
     );
@@ -91,7 +93,9 @@ const User: React.FC = () => {
           </IonItem>
           <IonItem>
             <IonLabel>トークン更新</IonLabel>
-            <IonButton onClick={getCookie}>更新</IonButton>
+            <IonButton onClick={getCookie} disabled={inProcess}>
+              更新
+            </IonButton>
           </IonItem>
           <IonItem>
             <IonLabel>リザルト登録</IonLabel>
