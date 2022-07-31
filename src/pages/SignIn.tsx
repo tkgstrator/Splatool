@@ -5,12 +5,11 @@ import {
   IonLabel,
   IonList,
   useIonToast,
-  useIonViewWillEnter,
 } from "@ionic/react";
-import { useState } from "react";
-import "./SignIn.css";
 import axios, { AxiosError } from "axios";
+import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SplatNet2Props } from "./Home";
 
 interface OAuth {
   oauthURL: string;
@@ -32,49 +31,53 @@ export interface APIError {
   errorMessage: string;
 }
 
-const SignIn: React.FC = () => {
+const SignIn: React.FC<SplatNet2Props> = ({ setAccount }) => {
   const { t } = useTranslation();
-  const [inProcess, setValue] = useState<boolean>();
-  const [sessionTokenCode, setCode] = useState<string>();
-  const [sessionTokenCodeVerifier, setVerifier] = useState<string>();
-  const [present, dismiss] = useIonToast();
+  const [present] = useIonToast();
+  const verifier = useRef<string>();
+  const session_token_code = useRef<string>();
+  const [isDisabled, toggleValue] = useState<boolean>(false);
 
   async function getOAuthURL() {
     const url = `${process.env.REACT_APP_SERVER_URL}/authorize`;
-    const response = (await (await fetch(url)).json()) as OAuth;
-    const verifier = response.session_token_verifier;
-    setVerifier(verifier);
-    window.open(response.oauthURL, "_blank");
+    const { session_token_verifier, oauthURL } = (await (
+      await fetch(url)
+    ).json()) as OAuth;
+    verifier.current = session_token_verifier;
+    window.open(oauthURL);
   }
 
-  useIonViewWillEnter(() => {
-    setValue(false);
-  });
-
   async function getCookie() {
+    toggleValue(true);
+    const url = `${process.env.REACT_APP_SERVER_URL}/login`;
+    const parameters = {
+      session_token_code_verifier: verifier.current,
+      session_token_code: session_token_code.current,
+    };
     try {
-      setValue(true);
-      const url = `${process.env.REACT_APP_SERVER_URL}/login`;
-      const parameters = {
-        session_token_code: sessionTokenCode,
-        session_token_code_verifier: sessionTokenCodeVerifier,
-      };
-      const response = (await axios.post(url, parameters)).data as SplatNet2;
-      localStorage.setItem("account", JSON.stringify(response));
+      // 取得したデータを文字列化
+      const response = JSON.stringify((await axios.post(url, parameters)).data);
+      // ローカルに保存
+      localStorage.setItem("account", response);
+      // オブジェクトに変換して保存
+      const account = JSON.parse(response) as SplatNet2;
+      setAccount(account);
       present({
-        message: response.nickname + "さんにログインしました",
+        message: account.nickname + "でログインしました",
         duration: 3000,
       });
+      toggleValue(false);
     } catch (error) {
-      const response = (error as AxiosError).response?.data as APIError;
-      const error_description =
-        response.error_description ?? response.errorMessage;
+      const { error_description, errorMessage } = (error as AxiosError).response
+        ?.data as APIError;
+      // エラーメッセージを翻訳して表示
+      const message = t(error_description || errorMessage);
       present({
-        message: t(error_description),
+        message: message,
         duration: 3000,
       });
+      toggleValue(false);
     }
-    setValue(false);
   }
 
   return (
@@ -88,11 +91,11 @@ const SignIn: React.FC = () => {
       <IonItem>
         <IonInput
           type="password"
-          value={sessionTokenCode}
+          value={session_token_code.current}
           placeholder="URLをここに貼り付けてください"
-          onIonChange={(e) => setCode(e.detail.value!)}
+          onIonChange={(e) => (session_token_code.current = e.detail.value!)}
         ></IonInput>
-        <IonButton slot="end" onClick={getCookie} disabled={inProcess}>
+        <IonButton slot="end" onClick={getCookie} disabled={isDisabled}>
           連携
         </IonButton>
       </IonItem>
