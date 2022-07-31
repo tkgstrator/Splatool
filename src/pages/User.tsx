@@ -7,23 +7,47 @@ import {
   IonLabel,
   IonList,
   useIonToast,
+  useIonViewDidEnter,
   useIonViewWillEnter,
 } from "@ionic/react";
 import "./User.css";
 import { Buffer } from "buffer";
-import axios, { AxiosError } from "axios";
 import dayjs from "dayjs";
-import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { SplatNet2Props } from "./Home";
+import { useState } from "react";
+import axios, { AxiosError } from "axios";
 import { APIError, SplatNet2 } from "./SignIn";
 
-const User: React.FC = () => {
+enum StateType {
+  Valid,
+  Undefined,
+  Expired,
+}
+
+const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
   const { t } = useTranslation();
-  const [inProcess, setValue] = useState<boolean>();
-  const [present, dismiss] = useIonToast();
-  const [isAvailable, setToggle] = useState<boolean>();
-  const [account, setAccount] = useState(() => {
-    return JSON.parse(localStorage.getItem("account") ?? "{}") as SplatNet2;
+  const [present] = useIonToast();
+  const [isDisabled, setToggle] = useState<boolean>(true);
+
+  const [state, setState] = useState<StateType>(StateType.Undefined);
+  const [expiredTime, setExpiredTime] = useState<string>();
+
+  useIonViewDidEnter(() => {
+    // アカウントがログイン済みであれば更新ボタンを押せるようにする
+    setToggle(account.session_token === undefined);
+    // トークンが有効かどうかのチェック
+    if (account.session_token === undefined) {
+      setState(StateType.Undefined);
+    } else if (account.expires_in >= dayjs().unix()) {
+      setState(StateType.Valid);
+    } else {
+      setState(StateType.Expired);
+    }
+    // 期限が切れる時間の表示
+    setExpiredTime(
+      dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss")
+    );
   });
 
   function getRecord() {
@@ -38,54 +62,51 @@ const User: React.FC = () => {
     window.open(url);
   }
 
-  async function expired() {
-    account.expires_in = 0;
-    localStorage.setItem("account", JSON.stringify(account));
-    setAccount(account);
-    setToggle(false);
-  }
-
-  async function activate() {
-    account.expires_in = dayjs(new Date()).unix() + 86400;
-    localStorage.setItem("account", JSON.stringify(account));
-    setAccount(account);
-    setToggle(true);
+  function getButtonText(message: string) {
+    switch (state) {
+      case StateType.Valid:
+        return message;
+      case StateType.Expired:
+        return "トークン更新してください";
+      case StateType.Undefined:
+        return "アカウント連携してください";
+    }
   }
 
   async function getCookie() {
+    setToggle(true);
+    const url = `${process.env.REACT_APP_SERVER_URL}/cookie`;
+    const parameters = {
+      session_token: account.session_token,
+    };
     try {
-      setValue(true);
-      const url = `${process.env.REACT_APP_SERVER_URL}/cookie`;
-      const parameters = {
-        session_token: account.session_token,
-      };
-      const response = (await axios.post(url, parameters)).data as SplatNet2;
-      localStorage.setItem("account", JSON.stringify(response));
-      setAccount(response);
+      // 取得したデータを文字列化
+      const response = JSON.stringify((await axios.post(url, parameters)).data);
+      // ローカルに保存
+      localStorage.setItem("account", response);
+      // オブジェクトに変換して保存
+      const account = JSON.parse(response) as SplatNet2;
+      setAccount(account);
       present({
-        message: "トークン更新成功しました",
+        message: account.nickname + "でログインしました",
         duration: 3000,
       });
-      setToggle(true);
+      setExpiredTime(
+        dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss")
+      );
+      setToggle(false);
     } catch (error) {
-      const response = (error as AxiosError).response?.data as APIError;
-      const error_description =
-        response.error_description ?? response.errorMessage;
+      const { error_description, errorMessage } = (error as AxiosError).response
+        ?.data as APIError;
+      // エラーメッセージを翻訳して表示
+      const message = t(error_description || errorMessage);
       present({
-        message: t(error_description),
+        message: message,
         duration: 3000,
       });
+      setToggle(false);
     }
-    setValue(false);
   }
-
-  useIonViewWillEnter(() => {
-    setToggle(dayjs(new Date()).unix() <= account.expires_in);
-    setValue(false);
-    setAccount(
-      JSON.parse(localStorage.getItem("account") ?? "{}") as SplatNet2
-    );
-  });
 
   return (
     <IonList>
@@ -98,26 +119,30 @@ const User: React.FC = () => {
         </IonItem>
         <IonItem>
           <IonLabel>有効期限</IonLabel>
-          <IonLabel slot="end">
-            {dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss")}
-          </IonLabel>
+          <IonLabel slot="end">{expiredTime}</IonLabel>
         </IonItem>
         <IonItem>
           <IonLabel>認証トークン</IonLabel>
-          <IonButton onClick={getCookie} disabled={inProcess}>
+          <IonButton onClick={getCookie} disabled={isDisabled}>
             更新
           </IonButton>
         </IonItem>
         <IonItem>
           <IonLabel>対戦分析ツール</IonLabel>
-          <IonButton onClick={getResult} disabled={!isAvailable}>
-            {isAvailable ? "分析する" : "トークンを更新してください"}
+          <IonButton
+            onClick={getResult}
+            disabled={!(state === StateType.Valid)}
+          >
+            {getButtonText("分析する")}
           </IonButton>
         </IonItem>
         <IonItem>
           <IonLabel>対戦記録ツール</IonLabel>
-          <IonButton onClick={getRecord} disabled={!isAvailable}>
-            {isAvailable ? "記録する" : "トークンを更新してください"}
+          <IonButton
+            onClick={getRecord}
+            disabled={!(state === StateType.Valid)}
+          >
+            {getButtonText("記録をみる")}
           </IonButton>
         </IonItem>
       </IonItemGroup>
