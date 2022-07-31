@@ -1,17 +1,11 @@
 import {
   IonAvatar,
   IonButton,
-  IonContent,
-  IonHeader,
   IonImg,
   IonItem,
   IonItemGroup,
   IonLabel,
   IonList,
-  IonListHeader,
-  IonPage,
-  IonTitle,
-  IonToolbar,
   useIonToast,
   useIonViewWillEnter,
 } from "@ionic/react";
@@ -21,32 +15,10 @@ import axios, { AxiosError } from "axios";
 import dayjs from "dayjs";
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
-import SignIn from "./SignIn";
-
-interface OAuth {
-  oauthURL: string;
-  session_token_verifier: string;
-}
-
-export interface SplatNet2 {
-  nickname: string;
-  nsaid: string;
-  session_token: string;
-  iksm_session: string;
-  thumbnail_url: string;
-  expires_in: number;
-}
-
-export interface APIError {
-  error: string;
-  error_description: string;
-  errorMessage: string;
-}
+import { APIError, SplatNet2 } from "./SignIn";
 
 const User: React.FC = () => {
   const { t } = useTranslation();
-  const [sessionTokenCode, setCode] = useState<string>();
-  const [sessionTokenCodeVerifier, setVerifier] = useState<string>();
   const [inProcess, setValue] = useState<boolean>();
   const [present, dismiss] = useIonToast();
   const [isAvailable, setToggle] = useState<boolean>();
