@@ -1,18 +1,13 @@
 import {
   IonButton,
-  IonContent,
-  IonHeader,
   IonInput,
   IonItem,
   IonLabel,
   IonList,
-  IonPage,
-  IonTitle,
-  IonToolbar,
   useIonToast,
   useIonViewWillEnter,
 } from "@ionic/react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import "./SignIn.css";
 import axios, { AxiosError } from "axios";
 import { useTranslation } from "react-i18next";
