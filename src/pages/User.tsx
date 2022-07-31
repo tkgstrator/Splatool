@@ -18,6 +18,7 @@ import { SplatNet2Props } from "./Home";
 import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import { APIError, SplatNet2 } from "./SignIn";
+import { useMemo } from "react";
 
 enum StateType {
   Valid,
@@ -29,9 +30,7 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
   const { t } = useTranslation();
   const [present] = useIonToast();
   const [isDisabled, setToggle] = useState<boolean>(true);
-
   const [state, setState] = useState<StateType>(StateType.Undefined);
-  const [expiredTime, setExpiredTime] = useState<string>();
 
   useIonViewDidEnter(() => {
     // アカウントがログイン済みであれば更新ボタンを押せるようにする
@@ -44,11 +43,15 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
     } else {
       setState(StateType.Expired);
     }
-    // 期限が切れる時間の表示
-    setExpiredTime(
-      dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss")
-    );
   });
+
+  const expiredTime = useMemo(() => {
+    if (state === StateType.Valid) {
+      return dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss");
+    } else if (state === StateType.Expired) {
+      return null;
+    }
+  }, [account]);
 
   function getRecord() {
     const token = Buffer.from(account.iksm_session).toString("base64");
@@ -91,9 +94,6 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
         message: account.nickname + "でログインしました",
         duration: 3000,
       });
-      setExpiredTime(
-        dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss")
-      );
       setToggle(false);
     } catch (error) {
       const { error_description, errorMessage } = (error as AxiosError).response
