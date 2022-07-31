@@ -111,6 +111,12 @@ const SignIn: React.FC = () => {
               連携
             </IonButton>
           </IonItem>
+          <IonItem>
+            <IonLabel slot="start">このサイトについて</IonLabel>
+            <IonButton slot="end" routerLink="developer">
+              情報
+            </IonButton>
+          </IonItem>
         </IonList>
       </IonContent>
     </IonPage>

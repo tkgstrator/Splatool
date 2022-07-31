@@ -14,6 +14,7 @@ import { IonReactRouter } from "@ionic/react-router";
 import { informationCircleOutline } from "ionicons/icons";
 import User from "./pages/User";
 import SignIn from "./pages/SignIn";
+import Developer from "./pages/Developer";
 
 /* Core CSS required for Ionic components to work properly */
 import "@ionic/react/css/core.css";
@@ -46,6 +47,9 @@ const App: React.FC = () => (
           </Route>
           <Route exact path="/setting">
             <SignIn />
+          </Route>
+          <Route exact path="/developer">
+            <Developer />
           </Route>
           <Route exact path="/">
             <Redirect to="/user" />
