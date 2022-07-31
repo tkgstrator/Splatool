@@ -23,9 +23,11 @@
     "axios": "^0.27.2",
     "buffer": "^6.0.3",
     "dayjs": "^1.11.4",
+    "i18next": "^21.8.16",
     "ionicons": "^5.4.0",
     "react": "^17.0.1",
     "react-dom": "^17.0.1",
+    "react-i18next": "^11.18.3",
     "react-router": "^5.2.0",
     "react-router-dom": "^5.2.0",
     "react-scripts": "^5.0.0",
@@ -42,7 +44,8 @@
     "workbox-range-requests": "^5.1.4",
     "workbox-routing": "^5.1.4",
     "workbox-strategies": "^5.1.4",
-    "workbox-streams": "^5.1.4"
+    "workbox-streams": "^5.1.4",
+    "yaml-loader": "^0.8.0"
   },
   "scripts": {
     "start": "react-scripts start",
