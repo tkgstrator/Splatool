@@ -8,7 +8,6 @@ import {
   IonList,
   useIonToast,
   useIonViewDidEnter,
-  useIonViewWillEnter,
 } from "@ionic/react";
 import "./User.css";
 import { Buffer } from "buffer";
@@ -19,6 +18,7 @@ import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import { APIError, SplatNet2 } from "./SignIn";
 import { useMemo } from "react";
+import { access } from "fs";
 
 enum StateType {
   Valid,
@@ -30,20 +30,24 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
   const { t } = useTranslation();
   const [present] = useIonToast();
   const [isDisabled, setToggle] = useState<boolean>(true);
-  const [state, setState] = useState<StateType>(StateType.Undefined);
 
   useIonViewDidEnter(() => {
-    // アカウントがログイン済みであれば更新ボタンを押せるようにする
-    setToggle(account.session_token === undefined);
-    // トークンが有効かどうかのチェック
-    if (account.session_token === undefined) {
-      setState(StateType.Undefined);
-    } else if (account.expires_in >= dayjs().unix()) {
-      setState(StateType.Valid);
-    } else {
-      setState(StateType.Expired);
+    if (account.expires_in >= dayjs().unix()) {
+      setToggle(false);
     }
   });
+
+  const state = useMemo(() => {
+    if (account.expires_in === undefined) {
+      return StateType.Undefined;
+    }
+
+    if (account.expires_in >= dayjs().unix()) {
+      return StateType.Valid;
+    }
+
+    return StateType.Expired;
+  }, [account.expires_in]);
 
   const expiredTime = useMemo(() => {
     if (state === StateType.Valid) {
@@ -51,7 +55,7 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
     } else if (state === StateType.Expired) {
       return null;
     }
-  }, [account]);
+  }, [account.expires_in, state]);
 
   function getRecord() {
     const token = Buffer.from(account.iksm_session).toString("base64");
@@ -64,6 +68,25 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
     const url = `https://splatool.net/analytics/?iksm=${token}`;
     window.open(url);
   }
+
+  // function expiredToken() {
+  //   const tmp = JSON.parse(JSON.stringify(account)) as SplatNet2;
+  //   tmp.expires_in = 0;
+  //   localStorage.setItem("account", JSON.stringify(tmp));
+  //   setAccount(tmp);
+  // }
+
+  // function activateToken() {
+  //   account.expires_in = dayjs().unix() + 86400;
+  //   setAccount(account);
+  //   localStorage.setItem("account", JSON.stringify(account));
+  // }
+
+  // function output() {
+  //   console.log(state);
+  //   console.log(account);
+  //   console.log(JSON.parse(localStorage.getItem("account") ?? "{}"));
+  // }
 
   function getButtonText(message: string) {
     switch (state) {
@@ -113,9 +136,14 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
       <IonItemGroup>
         <IonItem>
           <IonAvatar>
-            <IonImg src={account.thumbnail_url}></IonImg>
+            <IonImg
+              src={
+                account.thumbnail_url ??
+                "https://www.nintendo.co.jp/character/splatoon/images_en/common/loader_ika.gif"
+              }
+            ></IonImg>
           </IonAvatar>
-          <IonLabel slot="end">{account.nickname}</IonLabel>
+          <IonLabel slot="end">{account.nickname ?? "未ログイン"}</IonLabel>
         </IonItem>
         <IonItem>
           <IonLabel>有効期限</IonLabel>
@@ -123,7 +151,10 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
         </IonItem>
         <IonItem>
           <IonLabel>認証トークン</IonLabel>
-          <IonButton onClick={getCookie} disabled={isDisabled}>
+          <IonButton
+            onClick={getCookie}
+            disabled={state !== StateType.Valid || isDisabled}
+          >
             更新
           </IonButton>
         </IonItem>
@@ -148,11 +179,15 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
       </IonItemGroup>
       {/* <IonItem>
         <IonLabel>初期化</IonLabel>
-        <IonButton onClick={expired}>有効期限初期化</IonButton>
+        <IonButton onClick={expiredToken}>有効期限初期化</IonButton>
       </IonItem>
       <IonItem>
         <IonLabel>初期化</IonLabel>
-        <IonButton onClick={activate}>有効期限復活</IonButton>
+        <IonButton onClick={activateToken}>有効期限復活</IonButton>
+      </IonItem>
+      <IonItem>
+        <IonLabel>データ出力</IonLabel>
+        <IonButton onClick={output}>有効期限復活</IonButton>
       </IonItem> */}
     </IonList>
   );
