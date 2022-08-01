@@ -44,7 +44,8 @@ const SignIn: React.FC<SplatNet2Props> = ({ setAccount }) => {
       await fetch(url)
     ).json()) as OAuth;
     verifier.current = session_token_verifier;
-    window.open(oauthURL);
+    const newPage = window.open()!;
+    newPage.location.href = oauthURL;
   }
 
   async function getCookie() {

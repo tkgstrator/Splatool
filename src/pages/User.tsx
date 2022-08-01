@@ -18,7 +18,6 @@ import { useState } from "react";
 import axios, { AxiosError } from "axios";
 import { APIError, SplatNet2 } from "./SignIn";
 import { useMemo } from "react";
-import { access } from "fs";
 
 enum StateType {
   Valid,
@@ -29,16 +28,15 @@ enum StateType {
 const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
   const { t } = useTranslation();
   const [present] = useIonToast();
-  const [isDisabled, setToggle] = useState<boolean>(true);
+  const [isDisabled, setToggle] = useState<boolean>(false);
 
   useIonViewDidEnter(() => {
-    if (account.expires_in >= dayjs().unix()) {
-      setToggle(false);
-    }
+    setToggle(account.expires_in === undefined);
+    console.log(isDisabled);
   });
 
   const state = useMemo(() => {
-    if (account.expires_in === undefined) {
+    if (account.session_token === undefined) {
       return StateType.Undefined;
     }
 
@@ -47,15 +45,14 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
     }
 
     return StateType.Expired;
-  }, [account.expires_in]);
+  }, [account]);
 
   const expiredTime = useMemo(() => {
-    if (state === StateType.Valid) {
-      return dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss");
-    } else if (state === StateType.Expired) {
+    if (account.expires_in === undefined) {
       return null;
     }
-  }, [account.expires_in, state]);
+    return dayjs.unix(account.expires_in).format("YYYY/MM/DD HH:mm:ss");
+  }, [account.expires_in]);
 
   function getRecord() {
     const token = Buffer.from(account.iksm_session).toString("base64");
@@ -69,24 +66,24 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
     window.open(url);
   }
 
-  // function expiredToken() {
-  //   const tmp = JSON.parse(JSON.stringify(account)) as SplatNet2;
-  //   tmp.expires_in = 0;
-  //   localStorage.setItem("account", JSON.stringify(tmp));
-  //   setAccount(tmp);
-  // }
+  function expiredToken() {
+    const tmp = JSON.parse(JSON.stringify(account)) as SplatNet2;
+    tmp.expires_in = 0;
+    localStorage.setItem("account", JSON.stringify(tmp));
+    setAccount(tmp);
+  }
 
-  // function activateToken() {
-  //   account.expires_in = dayjs().unix() + 86400;
-  //   setAccount(account);
-  //   localStorage.setItem("account", JSON.stringify(account));
-  // }
+  function activateToken() {
+    account.expires_in = dayjs().unix() + 10;
+    setAccount(account);
+    localStorage.setItem("account", JSON.stringify(account));
+  }
 
-  // function output() {
-  //   console.log(state);
-  //   console.log(account);
-  //   console.log(JSON.parse(localStorage.getItem("account") ?? "{}"));
-  // }
+  function output() {
+    console.log(state);
+    console.log(account);
+    console.log(JSON.parse(localStorage.getItem("account") ?? "{}"));
+  }
 
   function getButtonText(message: string) {
     switch (state) {
@@ -153,7 +150,7 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
           <IonLabel>認証トークン</IonLabel>
           <IonButton
             onClick={getCookie}
-            disabled={state !== StateType.Valid || isDisabled}
+            disabled={isDisabled || state === StateType.Undefined}
           >
             更新
           </IonButton>
@@ -177,11 +174,11 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
           </IonButton>
         </IonItem>
       </IonItemGroup>
-      {/* <IonItem>
+      <IonItem>
         <IonLabel>初期化</IonLabel>
         <IonButton onClick={expiredToken}>有効期限初期化</IonButton>
       </IonItem>
-      <IonItem>
+      {/* <IonItem>
         <IonLabel>初期化</IonLabel>
         <IonButton onClick={activateToken}>有効期限復活</IonButton>
       </IonItem>
