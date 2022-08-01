@@ -36,6 +36,7 @@ const User: React.FC<SplatNet2Props> = ({ account, setAccount }) => {
   });
 
   const state = useMemo(() => {
+    setToggle(account.expires_in === undefined);
     if (account.session_token === undefined) {
       return StateType.Undefined;
     }
